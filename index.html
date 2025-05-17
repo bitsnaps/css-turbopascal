@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turbo Pascal Editor</title>
+    <style>
+/* Reset and base styles */
+* {
+    box-sizing: border-box;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: 600;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #000080;
+    color: #FFFF00;
+}
+
+ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* Color palette */
+:root {
+    --tp-blue: #000080;
+    --tp-yellow: #FFFF00;
+    --tp-white: #FFFFFF;
+    --tp-cyan: #00FFFF;
+    --tp-black: #000000;
+    --tp-gray: #808080;
+    --tp-light-gray: #C0C0C0;
+}
+
+/* Layout */
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+header, footer {
+    background-color: var(--tp-gray);
+    color: var(--tp-black);
+}
+
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Menu styles */
+.menu ul {
+    display: flex;
+}
+
+.menu li {
+    padding: 0.25em 0.5em;
+    cursor: pointer;
+}
+
+.menu li:hover {
+    background-color: var(--tp-light-gray);
+}
+
+.shortcut {
+    color: var(--tp-cyan);
+}
+
+/* Editor styles */
+.editor-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border: 2px solid var(--tp-white);
+    margin: 0.5em;
+}
+
+.file-tabs {
+    display: flex;
+    background-color: var(--tp-gray);
+}
+
+.tab {
+    padding: 0.25em 0.5em;
+    background-color: var(--tp-blue);
+    color: var(--tp-white);
+    border: 1px solid var(--tp-white);
+    cursor: pointer;
+}
+
+.tab.active {
+    background-color: var(--tp-blue);
+    border-bottom: none;
+}
+
+.editor {
+    flex: 1;
+    display: flex;
+    background-color: var(--tp-blue);
+}
+
+.line-numbers {
+    width: 3em;
+    background-color: var(--tp-gray);
+    color: var(--tp-white);
+    text-align: right;
+    padding: 0.5em;
+}
+
+#code-editor {
+    flex: 1;
+    background-color: var(--tp-blue);
+    color: var(--tp-yellow);
+    border: none;
+    resize: none;
+    padding: 0.5em;
+    font-size: 1em;
+    line-height: 1.2;
+}
+
+/* Output styles */
+.output-container {
+    height: 30%;
+    border: 2px solid var(--tp-white);
+    margin: 0.5em;
+}
+
+.output-header {
+    background-color: var(--tp-gray);
+    color: var(--tp-black);
+    padding: 0.25em 0.5em;
+}
+
+#output {
+    background-color: var(--tp-black);
+    color: var(--tp-white);
+    height: calc(100% - 1.5em);
+    padding: 0.5em;
+    overflow-y: auto;
+}
+
+/* Status bar styles */
+.status-bar {
+    display: flex;
+    justify-content: space-between;
+    background-color: var(--tp-gray);
+    color: var(--tp-black);
+    padding: 0.25em 0.5em;
+}
+
+/* Dialog styles */
+.dialog-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.dialog {
+    background-color: var(--tp-gray);
+    border: 2px solid var(--tp-white);
+    min-width: 300px;
+}
+
+.dialog-header {
+    background-color: var(--tp-blue);
+    color: var(--tp-white);
+    padding: 0.25em 0.5em;
+}
+
+.dialog-content {
+    padding: 1em;
+    color: var(--tp-black);
+}
+
+.dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.5em;
+}
+
+.dialog-buttons button {
+    margin-left: 0.5em;
+    padding: 0.25em 0.5em;
+    background-color: var(--tp-light-gray);
+    border: 1px solid var(--tp-black);
+    cursor: pointer;
+}
+
+.dialog-buttons button:hover {
+    background-color: var(--tp-white);
+}
+
+.btn-default {
+    font-weight: bold;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--tp-gray);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--tp-blue);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--tp-light-gray);
+}
+ul.submenu {
+    display: none;
+}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/redom@3.29.1/dist/redom.min.js"></script>
+    <script src="https://js.puter.com/v2/"></script>
+    
+</head>
+<body>
+    <div id="app">
+        <header>
+            <nav class="menu">
+                <ul>
+                    <li><span class="shortcut">F</span>ile</li>
+                    <li><span class="shortcut">E</span>dit</li>
+                    <li><span class="shortcut">S</span>earch</li>
+                    <li><span class="shortcut">R</span>un</li>
+                    <li><span class="shortcut">C</span>ompile</li>
+                    <li><span class="shortcut">D</span>ebug</li>
+                    <li><span class="shortcut">O</span>ptions</li>
+                    <li><span class="shortcut">W</span>indow</li>
+                    <li><span class="shortcut">H</span>elp</li>
+                </ul>
+            </nav>
+        </header>
+
+        <main>
+            <div class="editor-container">
+                <div class="file-tabs">
+                    <div class="tab active">PROGRAM1.PAS</div>
+                    <div class="tab">UNIT1.PAS</div>
+                    <div class="tab">+</div>
+                </div>
+                <div class="editor">
+                    <div class="line-numbers"></div>
+                    <textarea id="code-editor" spellcheck="false">
+program HelloWorld;
+begin
+  WriteLn('Hello, World!');
+end.
+                    </textarea>
+                </div>
+            </div>
+
+            <div class="output-container">
+                <div class="output-header">Output</div>
+                <div id="output" class="output"></div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="status-bar">
+                <div class="status-item">Line: 1 Col: 1</div>
+                <div class="status-item">Insert</div>
+                <div class="status-item">Modified</div>
+                <div class="status-item">F1-Help F2-Save F3-Open F9-Compile F10-Menu</div>
+            </div>
+        </footer>
+
+        <div class="dialog-container" style="display: none;">
+            <div class="dialog">
+                <div class="dialog-header">Dialog Title</div>
+                <div class="dialog-content">
+                    This is the dialog content area.
+                </div>
+                <div class="dialog-buttons">
+                    <button class="btn-default">OK</button>
+                    <button>Cancel</button>
+                    <button>Help</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { el, mount, list } from "https://redom.js.org/redom.es.min.js";
+    
+
+        // Check if user is logged in
+        const isLoggedIn = await puter.auth.isSignedIn();
+    
+        class Tab {
+            constructor(filename) {
+                this.filename = filename;
+                this.el = el('div.tab', 
+                    this.title = el('span', filename),
+                    this.closeButton = el('button.close', 'x')
+                );
+
+                this.closeButton.onclick = () => {
+                    const event = new CustomEvent('closeTab', {
+                        detail: this
+                    });
+                    document.dispatchEvent(event);
+                };
+            }
+
+            setActive(isActive) {
+                if (isActive) {
+                    this.el.classList.add('active');
+                } else {
+                    this.el.classList.remove('active');
+                }
+            }
+        }
+
+        class TabManager {
+            constructor() {
+                this.tabs = [];
+                this.activeTab = null;
+                this.el = el('div.file-tabs', new TabManager());
+                this.list = list(this.el, Tab);
+
+                document.addEventListener('closeTab', (evt) => {
+                    const tabToClose = evt.detail;
+                    const index = this.tabs.indexOf(tabToClose);
+                    if (index !== -1) {
+                        this.tabs.splice(index, 1);
+                        this.update();
+                        if (this.activeTab === tabToClose) {
+                            this.setActiveTab(this.tabs[Math.max(0, index - 1)]);
+                        }
+                    }
+                });
+            }
+
+            addTab(filename) {
+                const newTab = new Tab(filename);
+                this.tabs.push(newTab);
+                this.update();
+                this.setActiveTab(newTab);
+            }
+
+            setActiveTab(tab) {
+                if (this.activeTab) {
+                    this.activeTab.setActive(false);
+                }
+                this.activeTab = tab;
+                if (tab) {
+                    tab.setActive(true);
+                }
+            }
+
+            update() {
+                this.list.update(this.tabs);
+            }
+        }
+
+        class App { 
+            constructor() {
+                // Create main app structure
+                const app = el('div#app', [
+                    el('header', [
+                        el('nav.menu', [
+                            el('ul', [
+                                el('li', 'File'),
+                                el('li', 'Edit'),
+                                el('li', 'View'),
+                                el('li', 'Run')
+                            ])
+                        ])
+                    ]),
+                    el('main', [
+                        el('div.editor-container', [
+                            el(this.el, TabManager),
+                            el('div.editor', [
+                                el('div.line-numbers'),
+                                el('textarea#code-editor', { placeholder: 'Enter your code here...' })
+                            ])
+                        ]),
+                        el('div.output-container', [
+                            el('div.output-header', 'Output'),
+                            el('div#output')
+                        ])
+                    ]),
+                    el('footer', [
+                        el('div.status-bar', [
+                            el('span.status-message', 'Ready'),
+                            el('span.cursor-position', 'Line: 1, Column: 1')
+                        ])
+                    ])
+                ]);
+            }
+
+            addFileTab(filename) {
+                this.tabManager.addTab(filename);
+            }
+        }
+
+        // Mount the app to the body
+        mount(document.body, app);
+    
+        // Code editor
+        const codeEditor = app.querySelector('#code-editor');
+        const lineNumbers = app.querySelector('.line-numbers');
+    
+        // Function to update line numbers
+        function updateLineNumbers() {
+            const lines = codeEditor.value.split('\n').length;
+            lineNumbers.innerHTML = Array(lines).fill().map((_, i) => `<div>${i + 1}</div>`).join('');
+        }
+    
+        codeEditor.addEventListener('input', updateLineNumbers);
+        codeEditor.addEventListener('scroll', () => {
+            lineNumbers.scrollTop = codeEditor.scrollTop;
+        });
+    
+        // Update cursor position
+        codeEditor.addEventListener('keyup', () => {
+            const cursorPosition = codeEditor.selectionStart;
+            const lines = codeEditor.value.substr(0, cursorPosition).split('\n');
+            const currentLine = lines.length;
+            const currentColumn = lines[lines.length - 1].length + 1;
+            app.querySelector('.cursor-position').textContent = `Line: ${currentLine}, Column: ${currentColumn}`;
+        });
+    
+        // Run code
+        async function runCode() {
+            const code = codeEditor.value;
+            const output = app.querySelector('#output');
+            output.textContent = 'Running...';
+
+            if (!isLoggedIn) {
+                output.textContent = 'Please sign in to execute code.';
+                return;
+            }
+
+            try {
+                // JDoodle API credentials
+                const clientId = await puter.kv.get('jdoodle_client_id');
+                const clientSecret = await puter.kv.get('jdoodle_client_secret');
+
+                if (!clientId || !clientSecret) {
+                    output.textContent = 'Please set JDoodle API credentials in settings.';
+                    return;
+                }
+
+                // JDoodle API endpoint
+                const url = 'https://api.jdoodle.com/v1/execute';
+
+                // Set the payload
+                const payload = {
+                    clientId: clientId,
+                    clientSecret: clientSecret,
+                    script: code,
+                    stdin: '',
+                    language: 'pascal',
+                    versionIndex: '3'
+                };
+
+                // Convert the payload to JSON
+                const payloadJson = JSON.stringify(payload);
+
+                // Set the headers
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+
+                // Send the POST request
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: headers,
+                    body: payloadJson
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    output.textContent = data.output;
+                } else {
+                    throw new Error(`Failed to execute code. Status code: ${response.status}`);
+                }
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+            }
+        }
+    
+        // Add event listener for Run menu item
+        app.querySelector('nav.menu li:nth-child(4)').addEventListener('click', runCode);
+    
+        // File operations
+        async function newFile() {
+            codeEditor.value = '';
+            addFileTab('untitled.py');
+            updateLineNumbers();
+        }
+    
+        async function openFile() {
+            try {
+                const file = await puter.file.open({ multiple: false });
+                const content = await puter.fs.read(file.path);
+                codeEditor.value = content;
+                addFileTab(file.name);
+                updateLineNumbers();
+            } catch (error) {
+                console.error('Error opening file:', error);
+            }
+        }
+    
+        async function saveFile() {
+            try {
+                const filename = activeTab.textContent;
+                await puter.fs.write(filename, codeEditor.value);
+                app.querySelector('.status-message').textContent = 'File saved successfully';
+            } catch (error) {
+                console.error('Error saving file:', error);
+                app.querySelector('.status-message').textContent = 'Error saving file';
+            }
+        }
+    
+        // Add event listeners for File menu items
+        const fileMenu = app.querySelector('nav.menu li:first-child');
+        const fileMenuItems = el('ul.submenu', [
+            el('li', 'New File'),
+            el('li', 'Open File'),
+            el('li', 'Save File')
+        ]);
+    
+        fileMenu.appendChild(fileMenuItems);
+        fileMenu.addEventListener('click', () => fileMenuItems.style.display = 'block');
+        fileMenuItems.addEventListener('mouseleave', () => fileMenuItems.style.display = 'none');
+    
+        fileMenuItems.children[0].addEventListener('click', newFile);
+        fileMenuItems.children[1].addEventListener('click', openFile);
+        fileMenuItems.children[2].addEventListener('click', saveFile);
+    
+        // Initialize line numbers
+        updateLineNumbers();
+    
+        // Handle file drops
+        document.addEventListener('dragover', (e) => e.preventDefault());
+        document.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            const items = e.dataTransfer.items;
+            if (items && items.length > 0) {
+                const item = items[0];
+                if (item.kind === 'file') {
+                    const file = item.getAsFile();
+                    const content = await file.text();
+                    codeEditor.value = content;
+                    addFileTab(file.name);
+                    updateLineNumbers();
+                }
+            }
+        });
+    
+        // Listen for locale changes
+        puter.ui.on('localeChanged', function(locale) {
+            console.log(`User's preferred language code is: ${locale.language}`);
+            // You can use this to update the UI language if needed
+        });
+    
+    // Add a settings button to set JDoodle API credentials
+    const settingsButton = el('button', 'Settings');
+    app.querySelector('header').appendChild(settingsButton);
+
+    settingsButton.addEventListener('click', async () => {
+        const clientId = prompt('Enter JDoodle Client ID:');
+        const clientSecret = prompt('Enter JDoodle Client Secret:');
+
+        if (clientId && clientSecret) {
+            await puter.kv.set('jdoodle_client_id', clientId);
+            await puter.kv.set('jdoodle_client_secret', clientSecret);
+            alert('JDoodle API credentials saved.');
+        }
+    });
+    </script>
+</body>
+</html>
